@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  BUYER
+  SELLER
+  AGENT
+  ADMIN
+}
+
+enum PlatformRole {
+  USER
+  PLATFORM_ADMIN
+}
+
+enum MarketplaceRole {
+  BUYER
+  SELLER
+}
+
+enum OrganizationRole {
+  ORGANIZATION_ADMIN
+  AGENT
+}
+
+model User {
+  id               Int               @id @default(autoincrement())
+  email            String            @unique
+  name             String?
+  passwordHash     String?
+
+  // Temporary legacy role.
+  // We will remove this in a later migration.
+  role             UserRole         @default(BUYER)
+
+  platformRole     PlatformRole      @default(USER)
+  marketplaceRoles MarketplaceRole[] @default([BUYER])
+
+  emailVerified    DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  sessions         Session[]
+  memberships      OrganizationMembership[]
+  expiresmailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens           PasswordResetToken[]    
+}
+
+model Session {
+  id           Int      @id @default(autoincrement())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Organization {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships OrganizationMembership[]
+  invitations OrganizationInvitation[]
+}
+
+model OrganizationMembership {
+  id             Int              @id @default(autoincrement())
+  userId         Int
+  organizationId Int
+  role           OrganizationRole
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+model OrganizationInvitation {
+  id             Int      @id @default(autoincrement())
+  organizationId Int
+  email          String
+  role           OrganizationRole
+  tokenHash      String   @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([organizationId])
+}
+
+model EmailVerificationToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

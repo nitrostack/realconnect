@@ -55,3 +55,8 @@ Thumbs.db
 
 #VS Code local settings
 .vscode/
+
+#RealConnect Express Backend
+server/node_modules/
+server/.envserver/.env.*
+!server/.env.example
